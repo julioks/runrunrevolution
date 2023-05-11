@@ -1,0 +1,61 @@
+body {
+    font-family: 'Jura', sans-serif;
+    background-color: lightgoldenrodyellow;
+    margin: 0; font-weight: 500;
+}
+
+.container {
+    margin-top: 50px;
+}
+
+.square {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    border: 1px solid black;
+    animation: fadeout 3.5s forwards;
+}
+#capture-panel{
+    display: flex;
+    width: 100vw;
+    align-items: center;
+    justify-content: space-around;
+}
+#scoring{
+    text-align: right;
+}
+
+.number{
+    font-size: xx-large;
+    font-weight: bold;
+}
+.progress-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 10px;
+    background-color: #eee;
+    z-index: 100;
+  }
+  
+
+
+.progress-bar {
+    height: 10px;
+    background-color: #4caf50;
+
+  }
+  
+  @keyframes fadeout{ 
+      0% {opacity: 1;}
+      100% {opacity: 0;}
+  }
+
+  @keyframes scrollaway{
+    0% {width: 100%;}
+    100% {width: 0%;}
+  }
+
+  
+  
