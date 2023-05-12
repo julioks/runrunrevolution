@@ -1,3 +1,5 @@
+//script.js
+
 let stepCountElement = document.getElementById("step-count");
 let scoreElement = document.getElementById("score");
 let comboElement = document.getElementById("combo");
@@ -14,54 +16,85 @@ let comboTimeout;
 let progressBarUpdateTimeout;
 let progressBarElement = document.getElementById("progress-bar");
 
-
-window.addEventListener('deviceorientation', applicationInitialisationEvent, true);
-
-function applicationInitialisationEvent() {
+async function applicationInitialisationEvent() {
   if (appInitialised) {
     return;
   }
 
   appInitialised = true;
 
-  console.log('intialising the application');
+  console.log('initialising the application');
 
   document.getElementById('supported-check-panel').style = 'display: none;';
   document.getElementById('capture-panel').style = '';
 
-  startMotionCapture();
-  window.removeEventListener('deviceorientation', applicationInitialisationEvent);
+  try {
+    await startMotionCapture();
+  } catch (error) {
+    console.error("Failed to start motion capture:", error);
+  }
 }
 
-function startMotionCapture() {
-    let buffer = [];
-    let bufferSize = 20;
-    let threshold = .23;
-  
-    const onMotionEvent = (e) => {
+applicationInitialisationEvent();
+
+async function startMotionCapture() {
+  let buffer = [];
+  let bufferSize = 20;
+  let threshold = .23;
+
+  if ('Accelerometer' in window) {
+    try {
+      const accelerometer = new Accelerometer({frequency: 60});
+      accelerometer.addEventListener('reading', () => {
         if (isTapping) {
           return;
         }
-      
-      const acceleration = e.acceleration || e.accelerationIncludingGravity;
-      if (!acceleration) return;
-  
-      let magnitude = Math.sqrt(acceleration.x * acceleration.x + acceleration.y * acceleration.y + acceleration.z * acceleration.z);
-      buffer.push(magnitude);
-  
-      if (buffer.length > bufferSize) {
-        buffer.shift();
-  
-        if (isPeak(buffer, threshold)) {
-          steps++;
-          stepCountElement.textContent = steps;
-          createSquare();
+
+        let magnitude = Math.sqrt(accelerometer.x * accelerometer.x + accelerometer.y * accelerometer.y + accelerometer.z * accelerometer.z);
+        buffer.push(magnitude);
+
+        if (buffer.length > bufferSize) {
+          buffer.shift();
+
+          if (isPeak(buffer, threshold)) {
+            steps++;
+            stepCountElement.textContent = steps;
+            createSquare();
+          }
         }
-      }
-    };
-  
-    window.addEventListener('devicemotion', onMotionEvent, true);
+      });
+      accelerometer.start();
+    } catch (error) {
+      console.error('Could not instantiate accelerometer:', error);
+      // Fall back to devicemotion event
+      window.addEventListener('devicemotion', onDeviceMotionEvent, true);
+    }
+  } else {
+    console.warn('Accelerometer not supported');
+    // Fall back to devicemotion event
+    window.addEventListener('devicemotion', onDeviceMotionEvent, true);
   }
+
+  function onDeviceMotionEvent(e) {
+    if (isTapping) {
+      return;
+    }
+
+    const acceleration = e.accelerationIncludingGravity;
+    let magnitude = Math.sqrt(acceleration.x * acceleration.x + acceleration.y * acceleration.y + acceleration.z * acceleration.z);
+    buffer.push(magnitude);
+
+    if (buffer.length > bufferSize) {
+      buffer.shift();
+
+      if (isPeak(buffer, threshold)) {
+        steps++;
+        stepCountElement.textContent = steps;
+        createSquare();
+      }
+    }
+  }
+}
   
   function isPeak(data, threshold) {
     const middle = Math.floor(data.length / 2);
@@ -134,17 +167,38 @@ function createSquare() {
   
   function increaseCombo() {
     combo++;
+    updateProgressBarColor();
     comboElement.textContent = combo;
   }
+
+  function updateProgressBarColor() {
+    let maxCombo = 100; // Set this to your max combo
+    let hue = (1 - (combo / maxCombo)) * 240; // Map combo to a value between 0 (red) and 240 (blue)
+    // Calculate the opposite hue, but keep it within the range of 0 (red) to 240 (blue)
+    let oppositeHue = (combo / maxCombo) * 240;
+
+
+    progressBarElement.style.backgroundColor = `hsl(${hue}, 100%, 50%)`;
+    progressBarElement.style.boxShadow = `0 0 10px hsl(${hue}, 100%, 50%)`;
+
+    let bodyBackgroundColor = `hsl(${hue}, 100%, 70%)`; // Lighten the hue for the background
+    let bodyBackgroundOppositeColor = `hsl(${oppositeHue}, 100%, 70%)`; // Opposite hue for the other color
+    window.requestAnimationFrame(function() {
+      document.body.style.background = `radial-gradient(circle, ${bodyBackgroundOppositeColor}, ${bodyBackgroundColor})`;
+    });
+  }
+  
+  
   
   function resetCombo() {
     combo = 0;
     comboElement.textContent = combo;
+    document.body.style.background=`radial-gradient(circle, hsl(0, 100%, 70%), hsl(240, 100%, 70%))`;
     resetProgressBar();
   }
   
   function updateComboTimeout() {
-    let comboTimeoutDuration = Math.max(maxComboTimeout - combo * 100, 700);
+    let comboTimeoutDuration = Math.max(maxComboTimeout - (combo*.5) * 100, 700);
     updateProgressBar(comboTimeoutDuration);
     comboTimeout = setTimeout(() => {
       resetCombo();
